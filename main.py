@@ -14,6 +14,7 @@ commands_to_execute = [
     #"sudo docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v "
     #"/var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest",
     "sudo docker compose up -d --build", 
+    "sudo apt install python3-pip",
     "pip3 install boto3 python-dotenv",
     "python3 create_bucket.py"
 ]
