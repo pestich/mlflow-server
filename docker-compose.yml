@@ -1,0 +1,81 @@
+version: "3.10"
+
+services:
+  db:
+    restart: always
+    image: postgres
+    container_name: mlflow_db
+    ports:
+      - "5423:5432"
+    networks:
+      - postgres
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DATABASE: ${PG_DATABASE}
+    volumes:
+      - db_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD", "pg_isready", "-p", "5432", "-U", "${PG_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+  s3:
+    restart: always
+    image: quay.io/minio/minio:RELEASE.2023-11-11T08-14-41Z
+    container_name: mlflow_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - minio_app
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
+    command: server /data --console-address ':9001' --address ':9000'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  tracking_server:
+    restart: always
+    build: ./mlflow_image
+    image: mlflow_server
+    container_name: mlflow_server
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+    networks:
+      - postgres
+      - minio_app
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      MLFLOW_S3_ENDPOINT_URL: http://s3:9000
+      MLFLOW_S3_IGNORE_TLS: true
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}
+      --host 0.0.0.0
+      --serve-artifacts
+      --artifacts-destination s3://${MLFLOW_BUCKET_NAME}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  db_data:
+  minio_data:
+
+networks:
+  postgres:
+    driver: bridge
+  minio_app:
+    driver: bridge
