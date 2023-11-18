@@ -10,7 +10,7 @@ commands_to_execute = [
     "sudo sh get-docker.sh",
     "sudo docker compose up -d --build", 
     "sudo apt install python3-pip",
-    "pip3 install boto3 python-dotenv",
+    "pip3 install boto3 python-dotenv mlflow scikit-learn",
     "python3 create_bucket.py"
 ]
 
